@@ -22,11 +22,12 @@ import hashlib
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from lib import config, imagegen, imaging, llm, profile, wechat  # noqa: E402
+from lib import config, extract, imagegen, imaging, llm, profile, wechat  # noqa: E402
 
 for stream in (sys.stdout, sys.stderr):
     try:
@@ -44,11 +45,11 @@ MAX_IMAGES = 20
 
 
 def out(msg: str = "") -> None:
-    print(msg)
+    print(msg, flush=True)
 
 
 def err(msg: str) -> None:
-    print(f"错误：{msg}", file=sys.stderr)
+    print(f"错误：{msg}", file=sys.stderr, flush=True)
 
 
 def ok_json(payload: dict) -> None:
@@ -969,6 +970,150 @@ def cmd_from_md(args) -> int:
     return 0
 
 
+def cmd_from_url(args) -> int:
+    """抓一条现成的图文链接（公众号/微信贴图/小红书），拆成素材。
+
+    默认是「参考模式」：存成 reference/ 素材，交给后续重写；
+    --copy 才是「搬运模式」：直接填进 post.json 当成品。
+    """
+    folder = Path(args.dir).resolve()
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "images").mkdir(exist_ok=True)
+
+    out(f"正在抓取：{args.url}")
+    try:
+        info = extract.extract(args.url)
+    except extract.ExtractError as exc:
+        err(str(exc))
+        return 4
+
+    kind_cn = {"article": "公众号文章", "picture": "微信贴图", "note": "小红书笔记"}.get(
+        info.get("kind", ""), info.get("kind", "未知")
+    )
+    title = str(info.get("title", "")).strip()
+    content = str(info.get("content", "")).strip()
+    images = info.get("images") or []
+
+    out("")
+    out(f"识别为：{kind_cn}")
+    out(f"来源：{info.get('source_url', args.url)}")
+    out(f"标题：{title or '（无）'}{f'（{len(title)} 字）' if title else ''}")
+    out(f"作者：{info.get('author') or '（无）'}")
+    out(f"正文：{len(content)} 字｜图片：{len(images)} 张")
+
+    ref_dir = folder / "reference"
+    ref_dir.mkdir(exist_ok=True)
+    for stale in list(ref_dir.glob("*.jpg")) + list(ref_dir.glob("*.png")) + list(ref_dir.glob("*.webp")):
+        stale.unlink()
+
+    saved: list[Path] = []
+    if images:
+        out("")
+        out("下载图片…")
+        for idx, url in enumerate(images[: args.max_images], start=1):
+            try:
+                p = extract.download_image(url, ref_dir / f"{idx:02d}", referer=info.get("source_url", ""))
+                saved.append(p)
+                out(f"  {idx:02d} → {p.name}（{p.stat().st_size / 1024:.0f} KB）")
+            except extract.ExtractError as exc:
+                out(f"  {idx:02d} 跳过：{exc}")
+
+    md_lines = [
+        f"# 参考素材：{title or '（无标题）'}",
+        "",
+        f"- 来源：{info.get('source_url', args.url)}",
+        f"- 类型：{kind_cn}",
+        f"- 作者：{info.get('author') or '未知'}",
+        f"- 抓取时间：{datetime.now():%Y-%m-%d %H:%M}",
+        f"- 图片：{len(saved)} 张（同目录）",
+        "",
+        "## 原文正文",
+        "",
+        content or "（无正文）",
+        "",
+        "## 原文图片",
+        "",
+    ]
+    if saved:
+        md_lines += [f"{idx:02d}. {p.name}" for idx, p in enumerate(saved, start=1)]
+    else:
+        md_lines.append("（没有抓到图片）")
+    md_lines.append("")
+    (ref_dir / "reference.md").write_text("\n".join(md_lines), encoding="utf-8")
+    out("")
+    out(f"参考素材已存：{ref_dir / 'reference.md'}")
+
+    post = load_post(folder) if post_path(folder).exists() else None
+    if post is None:
+        cfg = config.load()
+        key = ""
+        try:
+            key = config.resolve_account(cfg, args.account)
+        except config.ConfigError:
+            pass
+        post = {
+            "account": key,
+            "brief": "",
+            "title": "",
+            "content": "",
+            "hashtags": [],
+            "author": (cfg["accounts"].get(key, {}) or {}).get("author", "") if key else "",
+            "cover_ratio": "1_1",
+            "image_ratio": "3:4",
+            "image_prompts": [],
+            "images": [],
+            "need_open_comment": 1,
+            "only_fans_can_comment": 0,
+            "last_media_id": "",
+            "status": "draft",
+        }
+
+    if args.copy:
+        # 搬运模式：原样复用内容
+        if title:
+            post["title"] = title[:MAX_TITLE]
+            if len(title) > MAX_TITLE:
+                out(f"注意：原标题 {len(title)} 字，已截断到 {MAX_TITLE} 字，建议手动改一版")
+        post["content"] = content
+        post["brief"] = title or content[:60]
+        if saved:
+            img_dir = folder / "images"
+            for old in img_dir.iterdir():
+                if old.is_file() and old.is_symlink() is False:
+                    old.unlink()
+            for idx, p in enumerate(saved, start=1):
+                target = img_dir / f"{idx:02d}{p.suffix}"
+                target.write_bytes(p.read_bytes())
+            post["images"] = []
+        save_post(folder, post)
+        out("")
+        out(f"已按原文填好 {post_path(folder)}（搬运模式）")
+        problems = validate(post)
+        if problems:
+            out("待修正：")
+            for p in problems:
+                out(f"  - {p}")
+        out(f"下一步：wxpost publish --dir {folder} --dry-run")
+        return 0
+
+    # 参考模式：只填 brief，内容交给后续重写
+    post["brief"] = title or content[:60]
+    if not post.get("account"):
+        post["account"] = args.account or ""
+    save_post(folder, post)
+    out("")
+    out(f"已把选题写进 post.json 的 brief：{post['brief']}")
+    out("")
+    out("下一步（参考模式，不直接搬原文）：")
+    out(f"  1) wxpost write --dir {folder} --count {args.max_images}   # 按参考素材重写")
+    out(f"  2) wxpost storyboard --dir {folder}                        # 出九宫格确认结构")
+    out(f"  3) wxpost gen --dir {folder}                               # 逐张出图")
+    out(f"  4) wxpost publish --dir {folder}")
+    out("")
+    out(f"想直接复用原文和图片：wxpost from-url <url> --dir {folder} --copy")
+    return 0
+
+
 # ---------------------------------------------------------------- 入口
 
 
@@ -1065,6 +1210,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--account")
     s.add_argument("--json", action="store_true")
     s.set_defaults(func=cmd_profile)
+
+    s = sub.add_parser("from-url", help="抓公众号/微信贴图/小红书链接，拆成参考素材")
+    s.add_argument("url")
+    s.add_argument("--dir", required=True)
+    s.add_argument("--account")
+    s.add_argument("--max-images", type=int, default=9, help="最多抓几张图，默认 9")
+    s.add_argument("--copy", action="store_true", help="搬运模式：原文原图直接填进 post.json")
+    s.set_defaults(func=cmd_from_url)
 
     s = sub.add_parser("from-md", help="把 Markdown 笔记转成 post 目录")
     s.add_argument("file")

@@ -3,8 +3,8 @@ name: wxpost
 description: |
   公众号贴图全链路：一句话选题 → 写标题正文标签 → 设计配图方案 → 九宫格故事板 → 逐张生图 → 压图换比例 → 传永久素材 → 建草稿箱，并按公众号账号维护长期风格记忆。
   产物是「图片消息」（article_type=newspic，微信里的小红书），不是 news 长图文。
-  触发词：「发贴图」「发小绿书」「公众号图片消息」「给这篇配几张图发公众号」「先出个分镜/故事板」「公众号版小红书」「一句话生成图文丢草稿箱」。
-  英文触发：English triggers: "wechat sticker post", "xiaolvshu", "wechat image message draft", "generate wechat post with images".
+  触发词：「发贴图」「发小绿书」「公众号图片消息」「给这篇配几张图发公众号」「先出个分镜/故事板」「公众号版小红书」「一句话生成图文丢草稿箱」「照这条链接做一个」「这个链接的图文参考一下」。
+  英文触发：English triggers: "wechat sticker post", "xiaolvshu", "wechat image message draft", "generate wechat post with images", "turn this link into a post".
 metadata:
   author: "邱高华"
   homepage: "https://github.com/whishi47"
@@ -43,9 +43,39 @@ metadata:
 | 「发贴图 / 小绿书 / 公众号图片消息」 | Phase 1 起，全链路 |
 | 「给这篇配几张图，发到公众号」 | Phase 2 起，文案已有，只做配图和发布 |
 | 「先出个分镜 / 故事板看看」 | Phase 2.5，只出故事板 |
+| 「照这条链接做一个」「这个链接参考一下」 | Phase 0.3 `from-url` 提取素材，再走 Phase 2 |
 | 「这篇小红书稿子转成贴图」 | 先 `from-md` 转成 post 目录，再 Phase 2.5 |
 | 「写公众号长文、要排版好看」 | ❌ 不在这里做，那是 news 图文消息，排版规则完全不同 |
 | 「群发 / 推给所有粉丝」 | ⚠️ 默认不做，见 Phase 4 |
+
+### Phase 0.3: 从链接取素材（可选入口）
+
+用户手上没有文案，只有一条别人写得好的图文时走这里。**做参考，不做搬运。**
+
+```bash
+$WXPOST from-url <链接> --dir ./post            # 参考模式（默认）
+$WXPOST from-url <链接> --dir ./post --copy     # 搬运模式：原文原图直接填进 post.json
+```
+
+支持范围和真实可靠度：
+
+| 链接形态 | 能抓到 | 可靠度 |
+|---|---|---|
+| 公众号文章 `mp.weixin.qq.com/s/*` | 标题、作者、正文、正文图 | ✅ 稳定，HTML 结构公开 |
+| 微信贴图（同域名，图多文少会自动识别为 picture） | 同上 | ✅ 稳定 |
+| 小红书 `xiaohongshu.com/explore/*`、`xhslink.com/*` | 标题、正文、图片 | ⚠️ 反爬强，常拿不到 |
+
+参考模式的产物：
+
+```
+post/reference/
+├── reference.md     原文标题/作者/来源/正文/图片清单
+└── 01.jpg 02.jpg …  原文图片，命名按原文顺序
+```
+
+同时把选题写进 `post.json` 的 `brief`，接着走 Phase 2。
+
+⛔ **小红书抓不到时不要硬编内容。** 命令行会明确报错，这时把替代方案给用户：① 把正文直接粘过来 ② 截图或导出图片 ③ 换个来源。绝不允许自己编一段"大概是这个意思"的内容顶上。
 
 ### Phase 0.5: 环境体检 🔴 CHECKPOINT
 
@@ -307,6 +337,7 @@ post/
 ├── post.json             标题/正文/标签/比例/配图提示词
 ├── images/               原图，01.jpg 起，第一张即封面（不会被改动）
 ├── storyboard/           九宫格预览 + 分镜表 + 提示词
+├── reference/            原文参考素材（from-url 产生）
 └── .build/               处理后的成品，自动生成
 ```
 
@@ -392,6 +423,15 @@ $WXPOST from-md ./笔记.md --dir ./post
 ```
 
 自动抽 H1 当标题、抽 `#标签` 到 `hashtags`、剩余正文剥掉 Markdown 标记。然后补图片，从 Phase 3.5 继续。
+
+### 拿到一条链接但抓不到
+
+小红书这类反爬平台经常抓不下来。按这个顺序降级，**每一步都不许编内容**：
+
+1. 换 `xhslink.com` 短链再试一次（短链跳转后偶尔能拿到）
+2. 让用户把正文直接粘过来，走 `from-md`
+3. 让用户截图或导出图片，放进 `post/images/`，走 Phase 3.5
+4. 都失败就如实说抓不到，别用"我记得这篇讲的是…"来凑
 
 ### 多账号
 

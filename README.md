@@ -8,6 +8,7 @@
 
 <p align="center">
   写文案 → 设计配图 → 九宫格故事板 → 逐张生图 → 压图换比例 → 传素材 → 建草稿，一条链跑完。<br>
+  素材可以是你随口的一句话，也可以是公众号 / 微信贴图 / 小红书的链接。<br>
   任何能跑命令的 Agent 都能用：Claude Code · Codex · opencode · WorkBuddy
 </p>
 
@@ -117,6 +118,29 @@ python3 -m venv .venv
 
 最后那句话会被记进这个公众号的长期档案，之后每篇都自动带上。
 
+### 从一条链接开始
+
+手上没素材，只有一条别人写得好的图文？把链接丢过来就行：
+
+```bash
+wxpost from-url https://mp.weixin.qq.com/s/xxxx      --dir ./post
+wxpost from-url https://www.xiaohongshu.com/explore/xxxx --dir ./post
+```
+
+它会抓下标题、正文和图片，存成 `post/reference/` 里的参考素材，把选题写进 `post.json`，接着走「重写 → 故事板 → 出图」。**是拿它当参考，不是搬运。**
+
+| 链接 | 能抓到什么 | 可靠度 |
+|---|---|---|
+| 公众号文章 `mp.weixin.qq.com/s/*` | 标题、作者、正文、正文图 | ✅ 稳定 |
+| 微信贴图（同域名，图多文少会自动识别） | 同上 | ✅ 稳定 |
+| 小红书 `xiaohongshu.com` / `xhslink.com` | 标题、正文、图片 | ⚠️ 有反爬，抓不到会直接说，不假装成功 |
+
+想把原文原图直接搬过来（比如自己号发过的内容改一版），加 `--copy`：
+
+```bash
+wxpost from-url <链接> --dir ./post --copy
+```
+
 ## 它到底做了什么
 
 | 步骤 | 命令 | 说明 |
@@ -194,6 +218,7 @@ wxpost/
 │   ├── imaging.py         3:4 居中裁切 + 逐级压缩
 │   ├── imagegen.py        生图适配（OpenAI 兼容 /v1/images/generations）
 │   ├── llm.py             文案生成 + 分镜策划 + 九宫格提示词拼装
+│   ├── extract.py         公众号/微信贴图/小红书链接内容提取
 │   └── profile.py         账号长期记忆
 ├── assets/                logo 与插图
 ├── config.example.json    配置样例
