@@ -69,7 +69,7 @@
 ### 方式一：一行命令
 
 ```bash
-git clone https://github.com/<你的账号>/wechat-sticker.git ~/.wxpost && bash ~/.wxpost/install.sh
+git clone https://github.com/whishi47/wechat-sticker.git ~/.wxpost && bash ~/.wxpost/install.sh
 ```
 
 `install.sh` 会建虚拟环境、装依赖，并把 `SKILL.md` 部署到你机器上各个 Agent 的 skills 目录。
@@ -77,7 +77,7 @@ git clone https://github.com/<你的账号>/wechat-sticker.git ~/.wxpost && bash
 ### 方式二：手动
 
 ```bash
-git clone https://github.com/<你的账号>/wechat-sticker.git ~/.wxpost
+git clone https://github.com/whishi47/wechat-sticker.git ~/.wxpost
 cd ~/.wxpost
 python3 -m venv .venv
 .venv/bin/pip install requests Pillow        # Windows: .venv\Scripts\pip install requests Pillow
@@ -267,7 +267,7 @@ Each Official Account keeps its own persistent style profile (tone, emoji densit
 **Install**
 
 ```bash
-git clone https://github.com/<your-account>/wechat-sticker.git ~/.wxpost && bash ~/.wxpost/install.sh
+git clone https://github.com/whishi47/wechat-sticker.git ~/.wxpost && bash ~/.wxpost/install.sh
 ```
 
 **Use**
