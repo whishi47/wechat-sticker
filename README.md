@@ -28,6 +28,10 @@
   <a href="#诚实边界">诚实边界</a>
 </p>
 
+<p align="center">
+  <img src="assets/banner.jpg" alt="wxpost — 公众号贴图全链路" width="100%">
+</p>
+
 ---
 
 公众号的「贴图」就是微信里的小红书——`article_type=newspic` 图片消息：标题 + 多图轮播 + 下方一段纯文本正文 + #标签。
@@ -142,6 +146,10 @@ wxpost from-url <链接> --dir ./post --copy
 ```
 
 ## 它到底做了什么
+
+<p align="center">
+  <img src="assets/features.jpg" alt="故事板转贴图 / 多账号记忆管理" width="100%">
+</p>
 
 | 步骤 | 命令 | 说明 |
 |---|---|---|
