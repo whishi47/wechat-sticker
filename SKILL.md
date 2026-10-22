@@ -9,7 +9,7 @@ metadata:
   author: "邱高华"
   homepage: "https://github.com/whishi47"
   repository: "https://github.com/whishi47/wechat-sticker"
-  version: "1.3.0"
+  version: "1.4.0"
 ---
 
 # wxpost · 公众号贴图全链路

@@ -14,6 +14,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://github.com/whishi47/wechat-sticker/releases"><img src="https://img.shields.io/github/v/release/whishi47/wechat-sticker?color=00C46A" alt="Release"></a>
   <img src="https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white" alt="Python 3.9+">
   <img src="https://img.shields.io/badge/Agent%20Skills-Standard-green" alt="Agent Skills">
   <img src="https://img.shields.io/badge/No%20MCP-Just%20CLI-orange" alt="No MCP">
