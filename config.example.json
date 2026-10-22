@@ -1,0 +1,24 @@
+{
+  "active_account": "diandongtong",
+  "accounts": {
+    "diandongtong": {
+      "app_id": "wx****************",
+      "app_secret": "**************************",
+      "author": "作者名"
+    }
+  },
+  "image": {
+    "provider": "none",
+    "base_url": "",
+    "api_key": "",
+    "model": "",
+    "size": "",
+    "timeout": 180
+  },
+  "defaults": {
+    "cover_ratio": "1_1",
+    "image_count": 4,
+    "need_open_comment": 1,
+    "only_fans_can_comment": 0
+  }
+}
